@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { ChatPanel } from "@/components/ChatPanel";
 import { DocumentPanel } from "@/components/DocumentPanel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/components/ToastProvider";
 import { listDocuments } from "@/lib/api";
 import type { DocumentSummary } from "@/lib/types";
@@ -36,10 +37,11 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-white dark:bg-zinc-950">
-      <header className="flex h-14 shrink-0 items-center border-b border-zinc-100 px-4 dark:border-zinc-800 sm:px-6">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-100 px-4 dark:border-zinc-800 sm:px-6">
         <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
           Document Assistant
         </span>
+        <ThemeToggle />
       </header>
 
       <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
