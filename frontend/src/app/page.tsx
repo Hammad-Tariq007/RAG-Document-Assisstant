@@ -36,7 +36,7 @@ export default function Home() {
   const selectedDocument = documents.find((d) => d.document_id === selectedDocumentId) ?? null;
 
   return (
-    <div className="flex h-screen flex-col bg-white dark:bg-zinc-950">
+    <div className="flex h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-100 px-4 dark:border-zinc-800 sm:px-6">
         <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
           Document Assistant

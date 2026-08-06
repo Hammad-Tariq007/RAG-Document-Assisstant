@@ -6,7 +6,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
+  /* A soft off-white canvas reads calmer than pure white; elevated
+     surfaces (cards, bubbles, inputs) stay white on top of it. */
+  --background: #fafafa;
   --foreground: #171717;
 }
 

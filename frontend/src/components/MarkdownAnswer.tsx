@@ -32,7 +32,7 @@ const components: Components = {
   li: ({ children }) => <li className="leading-relaxed">{children}</li>,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
   code: ({ children }) => (
-    <span className="mx-0.5 inline-flex items-center rounded-md bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+    <span className="mx-0.5 inline-flex items-center rounded-md bg-violet-100 px-1.5 py-0.5 text-xs font-medium text-violet-800 dark:bg-violet-900/50 dark:text-violet-300">
       {children}
     </span>
   ),
