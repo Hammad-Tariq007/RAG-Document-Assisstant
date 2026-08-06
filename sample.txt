@@ -1,0 +1,9 @@
+Hammad Bin Tariq is a full-stack engineer based in Lahore, Pakistan. He works at Meissasoft as an Associate Software Engineer, where he builds AI-powered products, cloud infrastructure, and full-stack applications.
+
+At Meissasoft, Hammad was the sole engineer on Kiooki, a real-time social media platform. He architected the entire system from scratch, including the database design, the NestJS backend APIs, the Next.js frontend, and the AWS deployment. He implemented real-time features such as WebSocket live chat and audio and video calling.
+
+Hammad also designed and launched an AI-powered CRM for the business development team. It tracks the complete lead lifecycle across pipeline stages and integrates Claude-powered analytics for win-loss behavior and sales performance insights. All twelve members of the BD team adopted it.
+
+Another major project was a company-wide credential security rollout using Vaultwarden. Hammad onboarded over one hundred employees and centralized more than five hundred credentials under AES-256 encryption. He owned the adoption end to end, including live demos and internal documentation.
+
+Hammad graduated from the University of the Punjab (PUCIT) with a BS in Information Technology. He achieved a CGPA of 3.97 out of 4.00 and was the Gold Medalist and Department Topper. His final year project, Fitness Freaks, was an AI fitness and diet application that used the Google Gemini API to generate personalized workout and diet plans.
