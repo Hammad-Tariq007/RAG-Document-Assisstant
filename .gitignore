@@ -1,0 +1,9 @@
+.venv
+.env
+.env.local
+node_modules
+__pycache__
+.next
+.claude
+frontend/AGENTS.md
+frontend/CLAUDE.md
