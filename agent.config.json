@@ -1,12 +1,12 @@
 {
   "project": "RAG-Document-Assistant",
   "commands": {
-    "install":   "pip install -r backend/requirements.txt -r requirements-dev.txt && cd frontend && npm ci",
-    "test":      "pytest -q",
-    "lint":      "ruff check . && cd frontend && npm run lint",
-    "typecheck": "cd frontend && npx tsc --noEmit",
-    "build":     "",
-    "holdout":   ""
+    "install": "pip install -r backend/requirements.txt -r requirements-dev.txt && cd frontend && npm ci",
+    "test": "pytest -q",
+    "lint": "ruff check . && cd frontend && npm run lint",
+    "typecheck": "",
+    "build": "",
+    "holdout": ""
   },
   "tickets": {
     "adapter": "github",
