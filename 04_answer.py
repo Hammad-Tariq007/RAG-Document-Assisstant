@@ -1,9 +1,10 @@
 import os
+
 import psycopg2
+from anthropic import Anthropic
 from dotenv import load_dotenv
 from pgvector.psycopg2 import register_vector
 from sentence_transformers import SentenceTransformer
-from anthropic import Anthropic
 
 load_dotenv()
 

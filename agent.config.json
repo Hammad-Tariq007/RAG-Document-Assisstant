@@ -1,0 +1,34 @@
+{
+  "project": "RAG-Document-Assistant",
+  "commands": {
+    "install":   "pip install -r backend/requirements.txt -r requirements-dev.txt && cd frontend && npm ci",
+    "test":      "pytest -q",
+    "lint":      "ruff check . && cd frontend && npm run lint",
+    "typecheck": "cd frontend && npx tsc --noEmit",
+    "build":     "",
+    "holdout":   ""
+  },
+  "tickets": {
+    "adapter": "github",
+    "base_branch": "main",
+    "ready_label": "agent-ready"
+  },
+  "policy": {
+    "max_fix_rounds": 2,
+    "escalate_model_on_round": 2,
+    "protected_paths": [
+      ".github/**",
+      ".env*",
+      "backend/database.py",
+      "docker-compose*",
+      "Dockerfile*",
+      "**/migrations/**"
+    ]
+  },
+  "models": {
+    "planner": "opus",
+    "implementer": "sonnet",
+    "reviewer": "opus",
+    "scribe": "haiku"
+  }
+}

@@ -6,4 +6,9 @@ __pycache__
 .next
 .claude
 frontend/AGENTS.md
-frontend/CLAUDE.md
+frontend/CLAUDE.md.wt/
+.agent-logs/
+.tickets/
+requirements-dev.txt
+.wt/
+.venv/

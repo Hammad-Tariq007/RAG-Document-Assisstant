@@ -1,7 +1,8 @@
+from importlib import import_module
+
 import psycopg2
 from pgvector.psycopg2 import register_vector
 from sentence_transformers import SentenceTransformer
-from importlib import import_module
 
 # Reuse the chunking code from Stage 1 (01_chunk.py)
 chunk_module = import_module("01_chunk")
