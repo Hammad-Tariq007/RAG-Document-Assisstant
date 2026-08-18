@@ -11,15 +11,14 @@ Endpoints:
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel
-
 from chunking import chunk_text
 from database import DatabaseUnavailableError, get_connection, init_schema
 from documents import extract_text
 from embeddings import embed
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
 from rag import build_prompt, count_chunks, retrieve, stream_llm_response
 
 
@@ -58,7 +57,7 @@ def _validate_document_id(document_id: str | None) -> None:
     try:
         uuid.UUID(document_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid document_id.")
+        raise HTTPException(status_code=400, detail="Invalid document_id.") from None
 
 
 @app.post("/upload")

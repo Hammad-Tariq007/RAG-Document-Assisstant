@@ -1,8 +1,7 @@
 """Text chunking — identical splitter and parameters as 01_chunk.py."""
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 from config import CHUNK_OVERLAP, CHUNK_SEPARATORS, CHUNK_SIZE
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 def chunk_text(text: str) -> list[str]:

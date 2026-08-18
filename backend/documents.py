@@ -2,11 +2,10 @@
 
 import io
 
+from config import ALLOWED_EXTENSIONS
 from docx import Document
 from fastapi import HTTPException
 from pypdf import PdfReader
-
-from config import ALLOWED_EXTENSIONS
 
 
 def extract_text(filename: str, file_bytes: bytes) -> str:

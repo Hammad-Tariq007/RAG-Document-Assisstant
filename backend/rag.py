@@ -8,7 +8,6 @@ to the LLM are unchanged from the tested scripts.
 from collections.abc import Generator
 
 from anthropic import Anthropic
-
 from config import LLM_MAX_TOKENS, LLM_MODEL, OPENROUTER_API_KEY, OPENROUTER_BASE_URL, TOP_K
 from database import get_connection
 from embeddings import embed

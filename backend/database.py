@@ -11,9 +11,8 @@ without losing any rows already in it.
 from contextlib import contextmanager
 
 import psycopg2
-from pgvector.psycopg2 import register_vector
-
 from config import DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER, EMBEDDING_DIM
+from pgvector.psycopg2 import register_vector
 
 
 class DatabaseUnavailableError(Exception):

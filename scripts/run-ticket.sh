@@ -25,6 +25,15 @@ mkdir -p "$LOGDIR"
 log() { echo "[$(date -u +%H:%M:%S)] $*" | tee -a "$LOGDIR/run.log"; }
 park() {
   log "PARKED: $*"
+  # Preserve the agent's work — a parked ticket often just needs a human nudge,
+  # and the cleanup trap would otherwise delete the whole worktree.
+  if [ -d "$WT" ]; then
+    git -C "$WT" add -A 2>/dev/null || true
+    git -C "$WT" -c user.name=agent -c user.email=agent@localhost \
+        commit -q -m "[agent][parked] $TICKET" 2>/dev/null || true
+    git -C "$WT" diff "origin/$BASE"...HEAD > "$LOGDIR/parked.diff" 2>/dev/null || true
+    log "  work preserved: branch $BRANCH + $LOGDIR/parked.diff"
+  fi
   echo "$*" > "$LOGDIR/PARKED"
   [ -f "$WT/.tickets/$TICKET/REPORT.md" ] && cp "$WT/.tickets/$TICKET/REPORT.md" "$LOGDIR/" || true
   exit 3
@@ -84,7 +93,7 @@ chmod 444 "$WT/.tickets/$TICKET/SPEC.md"
 cp "$CONFIG" "$WT/agent.config.json"
 cp -r "$ROOT/.claude" "$WT/.claude"
 cp "$ROOT/CLAUDE.md" "$WT/CLAUDE.md" 2>/dev/null || true
-mkdir -p "$WT/scripts" && cp -r "$ROOT/scripts/hooks" "$WT/scripts/hooks"
+mkdir -p "$WT/scripts/hooks" && cp "$ROOT/scripts/hooks/"*.sh "$WT/scripts/hooks/"
 
 # ---------------------------------------------------------------- 6. run the agent
 log "Running agent (this is the long part)..."
@@ -122,7 +131,7 @@ for step in install test lint typecheck build; do
   CMD=$(cfg ".commands.$step")
   [ -z "$CMD" ] && continue
   log "  → $step: $CMD"
-  if ! eval "$CMD" > "$LOGDIR/verify-$step.log" 2>&1; then
+  if ! ( cd "$WT" && eval "$CMD" ) > "$LOGDIR/verify-$step.log" 2>&1; then
     log "  ✗ $step FAILED (see verify-$step.log)"
     [ "$step" = "install" ] && park "install failed — environment problem, not agent's fault"
     VERIFY_OK=0

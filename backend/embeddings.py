@@ -6,9 +6,8 @@ at module scope) so every request reuses the same in-memory model instead
 of reloading it per call.
 """
 
-from sentence_transformers import SentenceTransformer
-
 from config import EMBEDDING_MODEL_NAME
+from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer(EMBEDDING_MODEL_NAME)
 
