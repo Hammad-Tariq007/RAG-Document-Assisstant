@@ -44,4 +44,4 @@ LLM_MODEL = "anthropic/claude-haiku-4.5"
 LLM_MAX_TOKENS = 500  # a little extra headroom for bulleted/structured answers
 
 # ---- Uploads ----
-ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx"}
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx", ".md", ".csv"}

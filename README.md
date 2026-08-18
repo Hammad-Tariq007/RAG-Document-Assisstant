@@ -47,7 +47,7 @@ feed them to an LLM constrained by a strict grounding prompt.
 
 ## Features
 
-- **Multi-format ingestion** — `.pdf`, `.docx`, and `.txt`, parsed and chunked automatically
+- **Multi-format ingestion** — `.pdf`, `.docx`, `.txt`, `.md`, and `.csv`, parsed and chunked automatically
 - **Semantic retrieval** — cosine similarity search over `sentence-transformers` embeddings via pgvector
 - **Grounded, cited answers** — the model is instructed to answer *only* from retrieved context and to cite `[Source N]`; it says "I don't know" when the answer isn't in the documents
 - **Live token streaming** — answers render live via a streamed HTTP response, not a blocking request
@@ -116,7 +116,7 @@ rag-document-assistant/
 │   ├── database.py             # pgvector connection handling + schema migrations
 │   ├── embeddings.py           # SentenceTransformer singleton
 │   ├── chunking.py             # RecursiveCharacterTextSplitter wrapper
-│   ├── documents.py            # PDF / DOCX / TXT text extraction
+│   ├── documents.py            # PDF / DOCX / TXT / MD / CSV text extraction
 │   ├── rag.py                  # retrieve() + build_prompt() + stream_llm_response()
 │   ├── main.py                 # FastAPI app and route handlers
 │   └── requirements.txt
@@ -202,7 +202,7 @@ Open **http://localhost:3000** and start uploading documents.
 
 | Method   | Endpoint                     | Description                                                  |
 |-----------|-------------------------------|----------------------------------------------------------------|
-| `POST`    | `/upload`                     | Upload a `.pdf` / `.docx` / `.txt` file — chunks, embeds, and stores it |
+| `POST`    | `/upload`                     | Upload a `.pdf` / `.docx` / `.txt` / `.md` / `.csv` file — chunks, embeds, and stores it |
 | `POST`    | `/ask`                        | `{ question, document_id? }` → streamed, cited, grounded answer |
 | `GET`     | `/documents`                  | List all uploaded documents                                    |
 | `DELETE`  | `/documents/{document_id}`    | Remove a document and all of its chunks                        |

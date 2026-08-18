@@ -1,4 +1,4 @@
-"""Text extraction for uploaded files (.pdf, .docx, and .txt)."""
+"""Text extraction for uploaded files (see ALLOWED_EXTENSIONS in config)."""
 
 import io
 
@@ -9,13 +9,18 @@ from pypdf import PdfReader
 
 
 def extract_text(filename: str, file_bytes: bytes) -> str:
-    """Pull plain text out of an uploaded .pdf, .docx, or .txt file."""
+    """Pull plain text out of an uploaded file of a supported type.
+
+    .pdf and .docx are parsed with their respective libraries; every other
+    supported extension is read as plain UTF-8 text.
+    """
     suffix = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
     if suffix not in ALLOWED_EXTENSIONS:
+        supported = ", ".join(sorted(ALLOWED_EXTENSIONS))
         raise HTTPException(
             status_code=400,
-            detail=f"Unsupported file type '{suffix}'. Only .pdf, .docx, and .txt are supported.",
+            detail=f"Unsupported file type '{suffix}'. Only {supported} are supported.",
         )
 
     if suffix == ".pdf":

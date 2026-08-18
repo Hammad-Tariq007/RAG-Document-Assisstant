@@ -86,7 +86,7 @@ export function DocumentPanel({
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.docx,.txt"
+          accept=".pdf,.docx,.txt,.md,.csv"
           multiple
           className="hidden"
           onChange={(e) => {
@@ -97,7 +97,7 @@ export function DocumentPanel({
         <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Drop files here or click to upload
         </span>
-        <span className="text-xs text-zinc-400">PDF, Word, or TXT</span>
+        <span className="text-xs text-zinc-400">PDF, Word, TXT, MD, or CSV</span>
       </label>
 
       {uploadingNames.length > 0 && (
