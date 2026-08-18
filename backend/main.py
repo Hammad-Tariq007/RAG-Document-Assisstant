@@ -2,7 +2,7 @@
 FastAPI app for the document assistant.
 
 Endpoints:
-  POST   /upload              upload a .pdf/.docx/.txt file, chunk + embed + store it
+  POST   /upload              upload a supported document, chunk + embed + store it
   POST   /ask                 ask a question, get a streamed, cited, grounded answer
   GET    /documents           list uploaded documents
   DELETE /documents/{doc_id}  remove a document and its chunks
