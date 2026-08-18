@@ -67,6 +67,15 @@ $(cat "$LOGDIR/ticket.md")
 EOF
 )" --model haiku 2>/dev/null | tr -d '[:space:]')
 
+# Claude Code can emit MCP/stderr noise into stdout, so match a keyword rather
+# than requiring the whole response to equal one word.
+case "$TRIAGE" in
+  *UNDERSPECIFIED*) TRIAGE=UNDERSPECIFIED ;;
+  *SENSITIVE*)      TRIAGE=SENSITIVE ;;
+  *READY*)          TRIAGE=READY ;;
+  *)                TRIAGE="UNPARSEABLE:${TRIAGE:0:60}" ;;
+esac
+
 log "Triage result: $TRIAGE"
 [ "$TRIAGE" = "READY" ] || park "triage returned $TRIAGE — not suitable for autonomous work"
 
@@ -162,7 +171,10 @@ fi
 # --------------------------------------------------------------- 12. commit + PR
 log "Committing and opening PR..."
 cd "$WT"
-rm -rf .claude scripts/hooks agent.config.json 2>/dev/null || true   # don't commit the harness copy
+# Restore harness files to their committed state. They are tracked in git now,
+# so deleting them would show up as a deletion in the PR diff.
+git checkout -- .claude scripts/hooks agent.config.json CLAUDE.md 2>/dev/null || true
+git clean -fd .claude scripts/hooks 2>/dev/null || true
 git add -A
 git -c user.name="agent" -c user.email="agent@localhost" \
     commit -q -m "[agent] $TICKET
