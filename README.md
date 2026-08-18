@@ -229,7 +229,7 @@ specific chunk.
 
 - [ ] Multi-turn conversational memory
 - [ ] Re-ranking of retrieved chunks before generation
-- [ ] Support for additional file types (`.md`, `.csv`)
+- [x] Support for additional file types (`.md`, `.csv`)
 - [ ] User authentication and per-user document isolation
 
 ## Author
