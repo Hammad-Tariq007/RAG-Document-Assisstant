@@ -9,6 +9,5 @@ frontend/AGENTS.md
 frontend/CLAUDE.md.wt/
 .agent-logs/
 .tickets/
-requirements-dev.txt
 .wt/
 .venv/
