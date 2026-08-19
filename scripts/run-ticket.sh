@@ -85,8 +85,10 @@ git -C "$ROOT" fetch origin "$BASE" --quiet || true
 git -C "$ROOT" worktree add --quiet -B "$BRANCH" "$WT" "origin/$BASE" 2>/dev/null \
   || git -C "$ROOT" worktree add --quiet -B "$BRANCH" "$WT" "$BASE"
 
+BASELINE_LOCK=""
 cleanup() {
   cd "$ROOT"
+  [ -n "$BASELINE_LOCK" ] && rmdir "$BASELINE_LOCK" 2>/dev/null || true
   git worktree remove --force "$WT" 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -100,22 +102,68 @@ chmod 444 "$WT/.tickets/$TICKET/SPEC.md"
 
 # Copy config + agent definitions into the worktree
 cp "$CONFIG" "$WT/agent.config.json"
-cp -r "$ROOT/.claude" "$WT/.claude"
+rm -rf "$WT/.claude" && cp -r "$ROOT/.claude" "$WT/.claude"
 cp "$ROOT/CLAUDE.md" "$WT/CLAUDE.md" 2>/dev/null || true
 mkdir -p "$WT/scripts/hooks" && cp "$ROOT/scripts/hooks/"*.sh "$WT/scripts/hooks/"
+
+# ------------------------------------------------------- 5b. baseline verification
+# Establish which gates already fail on untouched code. Without this the harness
+# blames the agent for pre-existing debt and for flaky infrastructure.
+# Cached per base commit, so it costs nothing on repeat runs.
+BASE_SHA=$(git -C "$WT" rev-parse HEAD)
+BASELINE_CACHE="$ROOT/.agent-logs/baseline-$BASE_SHA.txt"
+
+# run-night.sh dispatches tickets in parallel; without a lock they race here and
+# corrupt the cache. First one computes it, the rest wait and reuse.
+# Released by cleanup() — do NOT set a second EXIT trap, it would clobber it.
+if mkdir "$BASELINE_CACHE.lock" 2>/dev/null; then
+  BASELINE_LOCK="$BASELINE_CACHE.lock"
+else
+  BASELINE_LOCK=""
+  log "Baseline: another ticket is computing it, waiting..."
+  for _ in $(seq 1 120); do [ -d "$BASELINE_CACHE.lock" ] || break; sleep 5; done
+fi
+
+if [ -f "$BASELINE_CACHE" ]; then
+  log "Baseline: cached for $BASE_SHA"
+else
+  log "Baseline: verifying untouched code (one-off for this commit)..."
+  : > "$BASELINE_CACHE"
+  for step in install test lint typecheck build; do
+    CMD=$(cfg ".commands.$step")
+    [ -z "$CMD" ] && continue
+    if ( cd "$WT" && eval "$CMD" ) > "$LOGDIR/baseline-$step.log" 2>&1; then
+      echo "$step=pass" >> "$BASELINE_CACHE"
+      log "  baseline $step: pass"
+    else
+      echo "$step=fail" >> "$BASELINE_CACHE"
+      log "  baseline $step: FAIL (pre-existing — the agent will not be blamed for this)"
+    fi
+  done
+fi
+
+baseline_status() { grep "^$1=" "$BASELINE_CACHE" 2>/dev/null | cut -d= -f2; }
+
+# Baseline ran install/build in this worktree. Drop any untracked artifacts it left,
+# so step 7b does not read them as changes the agent made.
+git -C "$WT" clean -fdq -e node_modules -e .venv -e vendor 2>/dev/null || true
 
 # ---------------------------------------------------------------- 6. run the agent
 log "Running agent (this is the long part)..."
 cd "$WT"
 set +e
-timeout 3600 claude -p "/execute-ticket $TICKET" \
+MAX_TURNS=$(cfg '.policy.max_turns'); MAX_TURNS="${MAX_TURNS:-250}"
+TIMEOUT_S=$(cfg '.policy.timeout_seconds'); TIMEOUT_S="${TIMEOUT_S:-5400}"
+log "  caps: ${MAX_TURNS} turns, ${TIMEOUT_S}s wall clock"
+timeout "$TIMEOUT_S" claude -p "/execute-ticket $TICKET" \
+  --max-turns "$MAX_TURNS" \
   --dangerously-skip-permissions \
   --output-format json \
   > "$LOGDIR/agent-output.json" 2> "$LOGDIR/agent-error.log"
 AGENT_RC=$?
 set -e
 log "Agent exited with code $AGENT_RC"
-[ $AGENT_RC -eq 124 ] && park "agent timed out after 60 minutes"
+[ $AGENT_RC -eq 124 ] && park "agent timed out after ${TIMEOUT_S}s (raise policy.timeout_seconds if legitimate)"
 
 # ---------------------------------------------------------------- 7. spec integrity
 log "Verifying spec integrity..."
@@ -148,7 +196,11 @@ done < <(jq -r '.policy.protected_paths[]?' "$CONFIG" 2>/dev/null)
 while IFS= read -r f; do
   [ -z "$f" ] && continue
   case "$f" in
-    .claude/*|CLAUDE.md|agent.config.json|scripts/hooks/*|.tickets/*/SPEC.md)
+    .claude/*|scripts/*|.tickets/*/SPEC.md)
+      VIOLATIONS="$VIOLATIONS$f (harness file)\n" ;;
+    CLAUDE.md|agent.config.json)
+      # These are legitimately written by /setup, but never during a ticket —
+      # and a ticket is exactly what this script is running.
       VIOLATIONS="$VIOLATIONS$f (harness file)\n" ;;
   esac
 done <<< "$CHANGED"
@@ -164,7 +216,7 @@ if [ -s "$WT/.tickets/tamper.log" ]; then
   cp "$WT/.tickets/tamper.log" "$LOGDIR/"
   log "WARNING: tamper log is non-empty:"
   cat "$WT/.tickets/tamper.log" | tee -a "$LOGDIR/run.log"
-  grep -q "SKIP MARKER\|ASSERTIONS REMOVED" "$WT/.tickets/tamper.log" \
+  grep -q "VIOLATION" "$WT/.tickets/tamper.log" \
     && park "test tampering detected — do not merge"
 fi
 
@@ -176,22 +228,38 @@ for step in install test lint typecheck build; do
   CMD=$(cfg ".commands.$step")
   [ -z "$CMD" ] && continue
   log "  → $step: $CMD"
-  if ! ( cd "$WT" && eval "$CMD" ) > "$LOGDIR/verify-$step.log" 2>&1; then
-    log "  ✗ $step FAILED (see verify-$step.log)"
-    [ "$step" = "install" ] && park "install failed — environment problem, not agent's fault"
-    VERIFY_OK=0
-  else
+  if ( cd "$WT" && eval "$CMD" ) > "$LOGDIR/verify-$step.log" 2>&1; then
     log "  ✓ $step passed"
+    continue
   fi
+
+  # One retry. Absorbs flaky services, container cold starts, network blips.
+  log "  … $step failed, retrying once in 10s"
+  sleep 10
+  if ( cd "$WT" && eval "$CMD" ) > "$LOGDIR/verify-$step.log" 2>&1; then
+    log "  ✓ $step passed on retry (transient)"
+    continue
+  fi
+
+  # Still failing. Was it already failing before the agent touched anything?
+  if [ "$(baseline_status "$step")" = "fail" ]; then
+    log "  ⚠ $step fails, but it ALSO failed on untouched code — pre-existing, not a regression"
+    echo "$step: pre-existing failure" >> "$LOGDIR/pre-existing.txt"
+    continue
+  fi
+
+  log "  ✗ $step REGRESSED (passed on baseline, fails now — see verify-$step.log)"
+  [ "$step" = "install" ] && park "install failed — environment problem, not agent's fault"
+  VERIFY_OK=0
 done
-[ $VERIFY_OK -eq 1 ] || park "independent verification failed"
+[ $VERIFY_OK -eq 1 ] || park "independent verification failed — $(cat "$LOGDIR"/verify-*.log 2>/dev/null | tail -3 | tr '\n' ' ')"
 
 # --------------------------------------------------------------- 10. holdout tests
 HOLDOUT=$(cfg '.commands.holdout')
 if [ -n "$HOLDOUT" ] && [ -d "$ROOT/.holdout" ]; then
   log "Running holdout tests (agent never saw these)..."
   cp -r "$ROOT/.holdout" "$WT/.holdout"
-  if ! eval "$HOLDOUT" > "$LOGDIR/verify-holdout.log" 2>&1; then
+  if ! ( cd "$WT" && eval "$HOLDOUT" ) > "$LOGDIR/verify-holdout.log" 2>&1; then
     park "HOLDOUT FAILED while visible tests passed — classic test-gaming signature, do not merge"
   fi
   log "  ✓ holdout passed"

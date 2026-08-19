@@ -35,23 +35,17 @@
       "Bash(jq:*)"
     ],
     "deny": [
-      "Edit(.tickets/**)",
-      "Write(.tickets/**)",
+      "Edit(.tickets/*/SPEC.md)",
+      "Write(.tickets/*/SPEC.md)",
+      "Read(.holdout/**)",
       "Edit(.holdout/**)",
       "Write(.holdout/**)",
-      "Read(.holdout/**)",
-      "Edit(.github/**)",
-      "Edit(agent.config.json)",
       "Edit(.claude/**)",
-      "Edit(CLAUDE.md)",
-      "Bash(git push:*)",
+      "Edit(scripts/hooks/**)",
+      "Bash(git push --force:*)",
       "Bash(git reset --hard:*)",
-      "Bash(git rebase:*)",
-      "Bash(git branch -D:*)",
-      "Bash(rm -rf:*)",
-      "Bash(curl:*)",
-      "Bash(wget:*)",
-      "Bash(sudo:*)"
+      "Bash(sudo:*)",
+      "Edit(scripts/**)"
     ],
     "defaultMode": "bypassPermissions"
   },
