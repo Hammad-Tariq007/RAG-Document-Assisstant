@@ -45,11 +45,31 @@ fi
 # Shell is arbitrary, so this is best-effort; run-ticket.sh performs a definitive
 # post-run diff check that cannot be evaded.
 if [ -n "$CMD" ]; then
+  # Disable pathname expansion. Word-splitting below is intentional; globbing is not.
+  # Without this, a bare `*` anywhere in the command expands to every file in the
+  # repo, so any command containing an asterisk trips the protected-path check.
+  set -f
   # Does the command look like it writes to a file at all?
   # A heredoc BODY is content, not a write target. Scanning it meant that writing a
   # file which merely *mentions* a protected path was blocked by its own contents.
   # Drop everything from the heredoc marker onwards before looking for targets.
-  CMD_SCAN=$(printf '%s' "$CMD" | sed "s/<<-\\?['\"]\\?[A-Za-z_][A-Za-z0-9_]*['\"]\\?.*//")
+  # Remove heredoc bodies entirely: `cmd > f <<EOF ... EOF`. The body is content,
+  # not a target, and scanning it blocked writing any file that merely mentions a
+  # protected path. awk handles the multi-line case that sed could not.
+  CMD_SCAN=$(printf '%s' "$CMD" | awk '
+    BEGIN { skip = 0 }
+    skip  { if ($0 == marker) { skip = 0 }; next }
+    /<<-?[\x27"]?[A-Za-z_][A-Za-z0-9_]*[\x27"]?/ {
+      line = $0
+      sub(/<<-?[\x27"]?/, "", line)
+      marker = line
+      sub(/[\x27"]?[[:space:]].*$/, "", marker)
+      gsub(/[\x27"]/, "", marker)
+      sub(/<<-?[\x27"]?[A-Za-z_][A-Za-z0-9_]*[\x27"]?.*$/, "", $0)
+      skip = 1
+    }
+    { print }
+  ')
   # Redirections to /dev/null are not file writes.
   CMD_SCAN=$(printf '%s' "$CMD_SCAN" | sed 's#[0-9]*>>*[[:space:]]*/dev/null##g')
   if printf '%s' "$CMD_SCAN" | grep -qE '(^|[^>])>>?[[:space:]]*[^ &|]|(^|[[:space:]])(sed[[:space:]]+-i|perl[[:space:]]+-i|tee|truncate|dd[[:space:]]|install[[:space:]]|cp[[:space:]]|mv[[:space:]]|ln[[:space:]]|touch[[:space:]]|chmod[[:space:]]|chown[[:space:]])'; then
@@ -65,7 +85,10 @@ if [ -n "$CMD" ]; then
             block "shell command would write '$tok' while a ticket is running"
           fi ;;
       esac
-      if [ -f "$ROOT/agent.config.json" ]; then
+      # Project protected paths apply only while a ticket is in flight. During
+      # /setup there is no frozen spec and nothing being graded, so scaffolding
+      # a test runner or lockfile is legitimate work, not gate-tampering.
+      if [ -f "$ROOT/agent.config.json" ] && compgen -G "$ROOT/.tickets/*/SPEC.md" >/dev/null 2>&1; then
         while IFS= read -r pat; do
           [ -z "$pat" ] && continue
           # shellcheck disable=SC2254
@@ -98,6 +121,8 @@ if [ -n "$CMD" ]; then
   esac
 fi
 
+set +f
+
 [ -z "$FILE" ] && exit 0
 
 # ---- 2. Normalise to a repo-relative path ----------------------------------
@@ -129,6 +154,8 @@ esac
 # ---- 4. Project protected paths from agent.config.json ---------------------
 CONFIG="$ROOT/agent.config.json"
 [ -f "$CONFIG" ] || exit 0
+# Same rule for the file-path route: enforce project paths only during a ticket.
+compgen -G "$ROOT/.tickets/*/SPEC.md" >/dev/null 2>&1 || exit 0
 
 while IFS= read -r pattern; do
   [ -z "$pattern" ] && continue
