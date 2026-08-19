@@ -29,7 +29,7 @@ park() {
   # and the cleanup trap would otherwise delete the whole worktree.
   if [ -d "$WT" ]; then
     git -C "$WT" add -A 2>/dev/null || true
-    git -C "$WT" -c user.name=agent -c user.email=agent@localhost \
+    git -C "$WT" -c user.name=agent -c user.email=agent@localhost -c commit.gpgsign=false \
         commit -q -m "[agent][parked] $TICKET" 2>/dev/null || true
     git -C "$WT" diff "origin/$BASE"...HEAD > "$LOGDIR/parked.diff" 2>/dev/null || true
     log "  work preserved: branch $BRANCH + $LOGDIR/parked.diff"
@@ -60,7 +60,11 @@ Classify this ticket. Reply with ONE WORD only, nothing else.
 READY        - clear enough for an autonomous agent: has a described problem and an
                implied or stated definition of done.
 UNDERSPECIFIED - too vague, missing reproduction steps, or needs a product decision.
+               Judge the ticket text only. A hard task with clear criteria is READY.
 SENSITIVE    - touches auth, payments, PII, migrations, infrastructure, CI, or crypto.
+INFEASIBLE   - clear and well-specified, but this repo cannot support it: it needs a
+               framework, build tool, or dependency that is absent, and adding it would
+               require editing a protected path. Judge against the repo, not the ticket.
 
 --- TICKET ---
 $(cat "$LOGDIR/ticket.md")
@@ -71,6 +75,7 @@ EOF
 # than requiring the whole response to equal one word.
 case "$TRIAGE" in
   *UNDERSPECIFIED*) TRIAGE=UNDERSPECIFIED ;;
+  *INFEASIBLE*)     TRIAGE=INFEASIBLE ;;
   *SENSITIVE*)      TRIAGE=SENSITIVE ;;
   *READY*)          TRIAGE=READY ;;
   *)                TRIAGE="UNPARSEABLE:${TRIAGE:0:60}" ;;
@@ -268,9 +273,14 @@ fi
 
 # --------------------------------------------------------------- 11. sanity checks
 [ -f "$WT/.tickets/$TICKET/REPORT.md" ] || park "agent produced no REPORT.md"
-if ! git -C "$WT" diff --quiet "origin/$BASE" -- 2>/dev/null; then :; else
-  git -C "$WT" diff --quiet HEAD 2>/dev/null && park "agent made no changes"
-fi
+# Count modified AND untracked files. `git diff` ignores untracked entirely, so a
+# ticket that only adds new files looked like the agent had done nothing at all.
+CHANGE_COUNT=$( { git -C "$WT" diff --name-only 2>/dev/null
+                  git -C "$WT" diff --name-only --cached 2>/dev/null
+                  git -C "$WT" ls-files --others --exclude-standard 2>/dev/null
+                } | sort -u | grep -v '^$' | grep -v '^\.tickets/' | wc -l )
+[ "$CHANGE_COUNT" -eq 0 ] && park "agent made no changes"
+log "  $CHANGE_COUNT file(s) changed"
 
 # --------------------------------------------------------------- 12. commit + PR
 log "Committing and opening PR..."
@@ -280,7 +290,11 @@ cd "$WT"
 git checkout -- .claude scripts/hooks agent.config.json CLAUDE.md 2>/dev/null || true
 git clean -fd .claude scripts/hooks 2>/dev/null || true
 git add -A
-git -c user.name="agent" -c user.email="agent@localhost" \
+# Identity is configurable. Signing is force-disabled: an autonomous run has no
+# TTY, so pinentry times out and the commit fails outright.
+AUTHOR_NAME=$(cfg '.git.author_name');   AUTHOR_NAME="${AUTHOR_NAME:-agent}"
+AUTHOR_EMAIL=$(cfg '.git.author_email'); AUTHOR_EMAIL="${AUTHOR_EMAIL:-agent@localhost}"
+git -c user.name="$AUTHOR_NAME" -c user.email="$AUTHOR_EMAIL" -c commit.gpgsign=false \
     commit -q -m "[agent] $TICKET
 
 $(head -3 "$LOGDIR/ticket.md")
